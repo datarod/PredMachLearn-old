@@ -61,7 +61,7 @@ if (window.hljs && document.readyState && document.readyState === "complete") {
 <p>Load the initial data and the required libraries. Take a quick look at the data.</p>
 <pre class="r"><code>setwd(&quot;~/coursera/datasci-predmachlearn&quot;)
 library(corrplot) ;library(caret) ;library(kernlab);library(randomForest)
-#library(doMC);registerDoMC(cores=4);registerDoMC(4)
+library(doMC);registerDoMC(cores=2);registerDoMC(2)
 testingorig&lt;-read.csv(&quot;./pml-testing.csv&quot;)
 trainingorig&lt;-read.csv(&quot;./pml-training.csv&quot;)</code></pre>
 <pre class="r"><code>length(trainingorig);#str(trainingorig)</code></pre>
@@ -129,7 +129,7 @@ length(trainingLast)# give a final counth of variables</code></pre>
 </div>
 <div id="model-building" class="section level1">
 <h1>Model building</h1>
-<pre class="r"><code>#model1&lt;-train(classe ~ ., method=&quot;rf&quot;,data=trainingLast)
+<pre class="r"><code>#model1&lt;-train(classe ~ ., method=&quot;rpart&quot;,data=trainingLast)
 #model2&lt;train(classe ~ ., method=&quot;knn&quot;,data=trainingLast)</code></pre>
 </div>
 

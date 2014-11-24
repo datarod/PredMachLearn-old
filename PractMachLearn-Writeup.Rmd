@@ -14,7 +14,7 @@ Load the initial data and the required libraries. Take a quick look at the data.
 ```{r,getdata,warning=FALSE, message=FALSE}
 setwd("~/coursera/datasci-predmachlearn")
 library(corrplot) ;library(caret) ;library(kernlab);library(randomForest)
-#library(doMC);registerDoMC(cores=4);registerDoMC(4)
+library(doMC);registerDoMC(cores=2);registerDoMC(2)
 testingorig<-read.csv("./pml-testing.csv")
 trainingorig<-read.csv("./pml-training.csv")
 
@@ -70,7 +70,7 @@ length(trainingLast)# give a final counth of variables
 # Model building
 
 ````{r, model}
-#model1<-train(classe ~ ., method="rf",data=trainingLast)
+#model1<-train(classe ~ ., method="rpart",data=trainingLast)
 #model2<train(classe ~ ., method="knn",data=trainingLast)
 
 ````
