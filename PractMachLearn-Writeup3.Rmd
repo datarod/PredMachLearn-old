@@ -1,0 +1,108 @@
+---
+title: "Practical Machine Learning - Assignment"
+output: html_document
+---
+````{r,global_options,warning=FALSE, message=FALSE}
+```
+  Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. 
+  This project will take the Weight Lifting Exercise data set and attempt to create a predictive model for the six people performing exercies both correctly and incorrectly.  The raw activity data will be cleaned, parsed and then used in a predictive model.
+#Data processing and analysis
+ Download the initial data and the required libraries. Add the libraries to take advantage of multiple cores. Experience has shown that using all cores of a system can cause instability.
+ Read the data into datasets and take a quick look at the data.
+```{r,getdata,warning=FALSE, message=FALSE}
+setwd("~/Coursera/datasci-predmachlearn")
+library(corrplot) ;library(caret) ;library(kernlab);library(randomForest);library(rpart)
+library(doMC);registerDoMC(cores=3)
+#download the data - don't do it if you already have it
+if(!file.exists("./pml-testing.csv")){
+fileURL<-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+download.file(fileUrl,destfile="./pml-training.csv",method="curl")
+}
+if(!file.exists("./pml-testing.csv")){
+fileURL<-"https://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+download.file(fileUrl,destfile="./pml-testing.csv",method="curl")
+}
+# Put the data into initial datasets - still want to do this because the dataset may have been corrupted, or updated, with unwanted values.
+testingall<-read.csv("./pml-testing.csv")
+trainingall<-read.csv("./pml-training.csv")
+# create training & testing from training
+```
+  Start with simple exploratory data analysis (EDA) to look at the data. For the model we will be attempting to reduce the number of variables so will be tracking that through the cleaning and parsing process.
+```{r,getdata-result, }
+length(trainingall);str(trainingall)
+```
+  The initial look at the data shows there are control columns that do not help a model (e.g. user name).  Remove all of those columngs. Remember that any columns removed from the training set must also be removed from the test set.
+Next remove the large number of columns with missing values. And lastly get rid of the columns with near zero values. Dimension the train and test data to ensure they remain the same.  Look at the final 
+
+```{r, columns}
+# del columns
+delCol<-grepl("X|user_name|timestamp|new_window|num_window",colnames(trainingall))
+training<-trainingall[,!delCol]
+testing<-testingall[,!delCol]
+# get rid of zero columns
+NA_Col <- colSums(is.na(training))
+FlagCol <- NA_Col == 0
+trainmid <- training[FlagCol]
+testmid <- testing[FlagCol]
+#get rid of near zero variables
+nzv1 <- nearZeroVar(trainmid,saveMetrics=TRUE)
+trainfinal <- trainmid[,nzv1$nzv==FALSE]
+nzv2<-nzv1[-28,]
+testfinal <- testmid[,nzv1$nzv==FALSE]
+
+# look at final columns and confirm that test and train are the same.
+str(trainfinal);dim(testfinal)
+```
+  It is now time to separate the data into a training and testing set. Although there was a given testing set, that set does not have the response variable, so it can not be used for the actual creation and testing of our model. Divide the data into 70% for training and 30% for testing. Set a seed so that the model is repeatable. Check at end that I didn't mess up columns.
+
+```{r, createtrain}
+#partition the data
+set.seed(12345)
+inTrain<-createDataPartition(y=trainfinal$classe,p=.7,list=FALSE)
+traintrain<-trainfinal[inTrain,]
+traintest<-trainfinal[-inTrain,]
+dim(traintrain);dim(traintest)
+```
+  Now that we have a smaller set, we can take a quick look at the correlation matrix from the data. Heatmaps provide an excellent view of the data. The bright red, as shown in the cross bar where columns equal each other, show high correlation. 
+
+```{r, predicted correlation}
+pred.cor <- cor(traintrain[, names(traintrain) != "classe"])
+pal <- colorRampPalette(c("blue", "white", "red"))(n=50)
+heatmap(pred.cor, col = pal)
+```
+
+Although there are a few highly correlated factors we could work to remove some factors if the model runs too slowly or doesn't provide good results. Let's see how the model works first without any additional work.
+  Now it is time to build the model. This will use a simple random forest model. However, we will add the cross validation three times to meet the task requirement. We will also allow parallelization to aid performance. Given the cleaned data and correlation results, we would expect a low error rate.
+````{r, model}
+model <- train(as.factor(traintrain$classe) ~ ., data = traintrain, method = "rf", prox = TRUE, 
+               trControl = trainControl(method = "cv", number = 3, allowParallel = TRUE))
+#model <- train(as.factor(traintrain$classe) ~ ., data = traintrain, method = "rf")
+#model1 <- randomForest(classe ~ ., data = traintrain, ntree = 1024)
+
+
+````
+OK, time to check the error estimate for the model. 
+````{r error}
+model$finalModel
+
+```
+  We find that the Out of Band estimate of error is extremely small. The confusion matrix shows this by the small number of misclassified items. So we are comfortable
+  
+  Now check the results using the test data set.
+
+````{r, results}
+
+#now check the model against the test data
+traintestPred<- predict(model, traintest)
+confusionMatrix(traintestPred,traintest$classe)
+
+````
+  Since we have verified the model with the test data carved out of the training set and achieved fairly accurate results, we can now run the model against the provided test data.
+  
+````{r final answer}
+testPred<- predict(model, testfinal);testPred
+````
+References:
+http://groupware.les.inf.puc-rio.br/har
+http://www.inside-r.org/packages/cran/caret/docs/trainControl 
+http://cran.r-project.org/web/packages/caret/vignettes/caret.pdf
